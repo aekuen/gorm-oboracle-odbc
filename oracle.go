@@ -266,24 +266,6 @@ func (d Dialector) ClauseBuilders() (clauseBuilders map[string]clause.ClauseBuil
 		clauseBuilders["LIMIT"] = d.RewriteLimit11
 	}
 
-	clauseBuilders["RETURNING"] = func(c clause.Clause, builder clause.Builder) {
-		if returning, ok := c.Expression.(clause.Returning); ok {
-			_, _ = builder.WriteString("/*- -*/")
-			_, _ = builder.WriteString("RETURNING ")
-
-			if len(returning.Columns) > 0 {
-				for idx, column := range returning.Columns {
-					if idx > 0 {
-						_ = builder.WriteByte(',')
-					}
-
-					builder.WriteQuoted(column)
-				}
-			} else {
-				_ = builder.WriteByte('*')
-			}
-		}
-	}
 	return
 }
 

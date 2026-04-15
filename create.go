@@ -52,7 +52,7 @@ func Create(db *gorm.DB) {
 			stmt.AddClause(clause.Values{Columns: createValues.Columns, Values: [][]interface{}{createValues.Values[0]}})
 
 			stmt.Build("INSERT", "VALUES")
-			_ = outputInserted(db)
+
 		}
 
 		if !db.DryRun && db.Error == nil {

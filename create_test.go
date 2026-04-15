@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	_ "github.com/alexbrainman/odbc"
 )
 
 func TestMergeCreate(t *testing.T) {
@@ -217,6 +219,40 @@ func TestOra03146TTC(t *testing.T) {
 		DealSend:    "11111",
 		Code:        "111",
 		CreatedTime: time.Now(),
+	}
+	result := db.Create(&data)
+	if err = result.Error; err != nil {
+		t.Fatalf("执行失败：%v", err)
+	}
+	t.Log("执行成功，影响行数：", result.RowsAffected)
+}
+
+type ApiKey struct {
+	Id     int64  `gorm:"primaryKey;autoIncrement:true;column:ID;type:uint;size:20;default:0;comment:id" json:"ID"`
+	ApiKey string `gorm:"column:API_KEY;type:VARCHAR2;size:100;default:null;comment:接口名称" json:"API_KEY"`
+	Name   string `gorm:"column:NAME;type:VARCHAR2;size:4000;default:null;comment:原始请求参数" json:"NAME"`
+}
+
+func (ApiKey) TableName() string {
+	return "api_key"
+}
+
+func TestOdbcCreate(t *testing.T) {
+	db, err := dbOdbc, dbErrors[2]
+	if err != nil {
+		t.Fatal(err)
+	}
+	if db == nil {
+		t.Log("db is nil!")
+		return
+	}
+
+	// INSERT INTO "T100_SCPTOAPI_LOG" ("SL_ID","SL_API_NAME","SL_RAW_RECEIVE_JSON","SL_RAW_SEND_JSON","SL_DEAL_RECEIVE_JSON","SL_DEAL_SEND_JSON","SL_CODE","SL_CREATED_TIME")
+	// VALUES (9578529926701056,'/v1/t100/packingNum','11111','11111','11111','11111','111','2024-08-27 18:21:39.495')
+	data := ApiKey{
+		Id:     957852,
+		ApiKey: "/v1/t100/packingNum",
+		Name:   "11111",
 	}
 	result := db.Create(&data)
 	if err = result.Error; err != nil {

@@ -3,6 +3,7 @@ package oracle
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log"
 	"os"
 	"reflect"
@@ -14,13 +15,15 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 	"gorm.io/gorm/schema"
+
+	_ "github.com/alexbrainman/odbc"
 )
 
 var (
 	dbNamingCase *gorm.DB
 	dbIgnoreCase *gorm.DB
-
-	dbErrors = make([]error, 2)
+	dbOdbc       *gorm.DB
+	dbErrors     = make([]error, 3)
 )
 
 func init() {
@@ -37,6 +40,34 @@ func init() {
 	if dbIgnoreCase, err = openTestConnection(true, false); err != nil {
 		dbErrors[1] = err
 	}
+	if dbOdbc, err = openTestConnectionOdbc(true, true); err != nil {
+		dbErrors[2] = err
+	}
+}
+
+func openTestConnectionOdbc(ignoreCase, namingCase bool) (db *gorm.DB, err error) {
+	dsn := `DRIVER={OceanBase ODBC 2.0 Driver};TCPIP=1;SERVER=10.60.69.8;UID={aikb@kgrp#KGRP};PWD=aikb;PORT=2883`
+	sqlDB, err := sql.Open("odbc", dsn)
+	if err != nil {
+		return nil, err
+	}
+	sqlDB.SetMaxIdleConns(10)
+	sqlDB.SetMaxOpenConns(50)
+	sqlDB.SetConnMaxLifetime(time.Hour)
+	sqlDB.SetConnMaxIdleTime(30 * time.Minute)
+	if err = sqlDB.Ping(); err != nil {
+		return nil, fmt.Errorf("连接数据库失败:%w", err)
+	}
+	fmt.Printf("✅ ODBC 连接成功！")
+
+	db, err = gorm.Open(New(Config{
+		Conn: sqlDB,
+	}), getTestGormConfig())
+	if db != nil && err == nil {
+		log.Println("open oracle database connection success!")
+	}
+
+	return
 }
 
 func openTestConnection(ignoreCase, namingCase bool) (db *gorm.DB, err error) {
