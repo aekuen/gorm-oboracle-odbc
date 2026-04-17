@@ -6,7 +6,7 @@ require (
 	github.com/alexbrainman/odbc v0.0.0-20250601004241-49e6b2bc0cf0
 	github.com/emirpasic/gods v1.18.1
 	github.com/sijms/go-ora/v2 v2.9.0
-	gorm.io/gorm v1.25.11
+	gorm.io/gorm v1.31.1
 )
 
 require (
