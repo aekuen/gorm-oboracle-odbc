@@ -170,29 +170,25 @@ func MergeCreate(db *gorm.DB, onConflict clause.OnConflict, values clause.Values
 
 	written := false
 	for _, column := range values.Columns {
-		if db.Statement.Schema.PrioritizedPrimaryField == nil || !db.Statement.Schema.PrioritizedPrimaryField.AutoIncrement || db.Statement.Schema.PrioritizedPrimaryField.DBName != column.Name {
-			if written {
-				_ = db.Statement.WriteByte(',')
-			}
-			written = true
-			db.Statement.WriteQuoted(column.Name)
+		if written {
+			_ = db.Statement.WriteByte(',')
 		}
+		written = true
+		db.Statement.WriteQuoted(column.Name)
 	}
 
 	_, _ = db.Statement.WriteString(") VALUES (")
 
 	written = false
 	for _, column := range values.Columns {
-		if db.Statement.Schema.PrioritizedPrimaryField == nil || !db.Statement.Schema.PrioritizedPrimaryField.AutoIncrement || db.Statement.Schema.PrioritizedPrimaryField.DBName != column.Name {
-			if written {
-				_ = db.Statement.WriteByte(',')
-			}
-			written = true
-			db.Statement.WriteQuoted(clause.Column{
-				Table: "excluded",
-				Name:  column.Name,
-			})
+		if written {
+			_ = db.Statement.WriteByte(',')
 		}
+		written = true
+		db.Statement.WriteQuoted(clause.Column{
+			Table: "excluded",
+			Name:  column.Name,
+		})
 	}
 	_, _ = db.Statement.WriteString(")")
 }
