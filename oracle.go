@@ -431,7 +431,62 @@ func (d Dialector) BindVarTo(writer clause.Writer, stmt *gorm.Statement, _ inter
 	_, _ = writer.WriteString(strconv.Itoa(len(stmt.Vars)))
 }
 
+var oracleKeywords = []string{
+	"ACCESS", "ADD", "ALL", "ALTER", "AND", "ANY", "AS", "ASC",
+	"AUDIT", "BETWEEN", "BY", "CHAR", "CHECK", "CLUSTER", "COLUMN",
+	"COMMENT", "COMPRESS", "CONNECT", "CREATE", "CURRENT", "DATE",
+	"DECIMAL", "DEFAULT", "DELETE", "DESC", "DISTINCT", "DROP",
+	"ELSE", "EXCLUSIVE", "EXISTS", "FILE", "FLOAT", "FOR", "FROM",
+	"GRANT", "GROUP", "HAVING", "IDENTIFIED", "IMMEDIATE", "IN",
+	"INCREMENT", "INDEX", "INITIAL", "INSERT", "INTEGER", "INTERSECT",
+	"INTO", "IS", "LEVEL", "LIKE", "LOCK", "LONG", "MAXEXTENTS",
+	"MINUS", "MLSLABEL", "MODE", "MODIFY", "NOAUDIT", "NOCOMPRESS",
+	"NOT", "NOWAIT", "NULL", "NUMBER", "OF", "OFFLINE", "ON",
+	"ONLINE", "OPTION", "OR", "ORDER", "PCTFREE", "PRIOR",
+	"PUBLIC", "RAW", "RENAME", "RESOURCE", "REVOKE", "ROW",
+	"ROWID", "ROWNUM", "ROWS", "SELECT", "SESSION", "SET",
+	"SHARE", "SIZE", "SMALLINT", "START", "SUCCESSFUL", "SYNONYM",
+	"SYSDATE", "TABLE", "THEN", "TO", "TRIGGER", "UID", "UNION",
+	"UNIQUE", "UPDATE", "USER", "VALIDATE", "VALUES", "VARCHAR",
+	"VARCHAR2", "VIEW", "WHENEVER", "WHERE",
+}
+var oracleKeywordSet = func() map[string]struct{} {
+	m := make(map[string]struct{}, len(oracleKeywords))
+	for _, keyword := range oracleKeywords {
+		m[keyword] = struct{}{}
+	}
+	return m
+}()
+
+func isOracleKeyword(s string) bool {
+	s = strings.Trim(s, `"`)
+	_, ok := oracleKeywordSet[strings.ToUpper(s)]
+	return ok
+}
+
+func quoteOracleKeywordPath(s string) (string, bool) {
+	if s == "" {
+		return s, false
+	}
+
+	parts := strings.Split(s, ".")
+	changed := false
+
+	for i, part := range parts {
+		raw := strings.Trim(part, `"`)
+		if isOracleKeyword(raw) {
+			parts[i] = `"` + strings.ToUpper(raw) + `"`
+			changed = true
+		}
+	}
+
+	return strings.Join(parts, "."), changed
+}
 func (d Dialector) QuoteTo(writer clause.Writer, str string) {
+	if quoted, ok := quoteOracleKeywordPath(str); ok {
+		_, _ = writer.WriteString(quoted)
+		return
+	}
 	if d.NamingCaseSensitive && str != "" {
 		var (
 			underQuoted, selfQuoted bool
