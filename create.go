@@ -28,7 +28,7 @@ func Create(db *gorm.DB) {
 			onConflict, hasConflict = stmt.Clauses["ON CONFLICT"].Expression.(clause.OnConflict)
 		)
         hasExplicitTarget := len(onConflict.Columns) > 0 || onConflict.OnConstraint != ""
-		if !!hasExplicitTarget {
+		if !hasExplicitTarget {
 			if hasConflict {
 				if stmtSchema != nil && len(stmtSchema.PrimaryFields) > 0 {
 					columnsMap := map[string]bool{}
