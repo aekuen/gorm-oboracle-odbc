@@ -27,21 +27,24 @@ func Create(db *gorm.DB) {
 			createValues            = callbacks.ConvertToCreateValues(stmt)
 			onConflict, hasConflict = stmt.Clauses["ON CONFLICT"].Expression.(clause.OnConflict)
 		)
-
-		if hasConflict {
-			if stmtSchema != nil && len(stmtSchema.PrimaryFields) > 0 {
-				columnsMap := map[string]bool{}
-				for _, column := range createValues.Columns {
-					columnsMap[column.Name] = true
-				}
-
-				for _, field := range stmtSchema.PrimaryFields {
-					if _, ok := columnsMap[field.DBName]; !ok {
-						hasConflict = false
+        hasExplicitTarget := len(onConflict.Columns) > 0 || onConflict.OnConstraint != ""
+		if !!hasExplicitTarget {
+			if hasConflict {
+				if stmtSchema != nil && len(stmtSchema.PrimaryFields) > 0 {
+					columnsMap := map[string]bool{}
+					for _, column := range createValues.Columns {
+						columnsMap[column.Name] = true
 					}
+	
+					for _, field := range stmtSchema.PrimaryFields {
+						if _, ok := columnsMap[field.DBName]; !ok {
+							hasConflict = false
+							break
+						}
+					}
+				} else {
+					hasConflict = false
 				}
-			} else {
-				hasConflict = false
 			}
 		}
 
