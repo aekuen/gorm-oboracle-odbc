@@ -2,6 +2,7 @@ package oracle
 
 import (
 	"reflect"
+	"strings"
 
 	"github.com/sijms/go-ora/v2"
 	"gorm.io/gorm"
@@ -27,7 +28,7 @@ func Create(db *gorm.DB) {
 			createValues            = callbacks.ConvertToCreateValues(stmt)
 			onConflict, hasConflict = stmt.Clauses["ON CONFLICT"].Expression.(clause.OnConflict)
 		)
-        hasExplicitTarget := len(onConflict.Columns) > 0 || onConflict.OnConstraint != ""
+		hasExplicitTarget := len(onConflict.Columns) > 0 || onConflict.OnConstraint != ""
 		if !hasExplicitTarget {
 			if hasConflict {
 				if stmtSchema != nil && len(stmtSchema.PrimaryFields) > 0 {
@@ -35,7 +36,7 @@ func Create(db *gorm.DB) {
 					for _, column := range createValues.Columns {
 						columnsMap[column.Name] = true
 					}
-	
+
 					for _, field := range stmtSchema.PrimaryFields {
 						if _, ok := columnsMap[field.DBName]; !ok {
 							hasConflict = false
@@ -155,16 +156,16 @@ func MergeCreate(db *gorm.DB, onConflict clause.OnConflict, values clause.Values
 	_, _ = db.Statement.WriteString(" ON (")
 
 	var where clause.Where
-	if len(onConflict.Columns)>0 {
+	if len(onConflict.Columns) > 0 {
 		for _, column := range onConflict.Columns {
-		if column.Name == "" {
-			continue
+			if column.Name == "" {
+				continue
+			}
+			where.Exprs = append(where.Exprs, clause.Eq{
+				Column: clause.Column{Table: db.Statement.Table, Name: column.Name},
+				Value:  clause.Column{Table: "excluded", Name: column.Name},
+			})
 		}
-		where.Exprs = append(where.Exprs, clause.Eq{
-			Column: clause.Column{Table: db.Statement.Table, Name: column.Name},
-			Value:  clause.Column{Table: "excluded", Name: column.Name},
-		})
-	}
 	} else {
 		for _, field := range db.Statement.Schema.PrimaryFields {
 			where.Exprs = append(where.Exprs, clause.Eq{
@@ -177,8 +178,29 @@ func MergeCreate(db *gorm.DB, onConflict clause.OnConflict, values clause.Values
 	_ = db.Statement.WriteByte(')')
 
 	if len(onConflict.DoUpdates) > 0 {
-		_, _ = db.Statement.WriteString(" WHEN MATCHED THEN UPDATE SET ")
-		onConflict.DoUpdates.Build(db.Statement)
+		doUpdates := make(clause.Set, 0, len(onConflict.DoUpdates))
+
+		onColumns := make(map[string]struct{}, len(onConflict.Columns))
+		for _, column := range onConflict.Columns {
+			if column.Name == "" {
+				continue
+			}
+			onColumns[strings.ToLower(column.Name)] = struct{}{}
+		}
+
+		for _, assignment := range onConflict.DoUpdates {
+			columnName := strings.ToLower(assignment.Column.Name)
+			if _, ok := onColumns[columnName]; ok {
+				continue
+			}
+
+			doUpdates = append(doUpdates, assignment)
+		}
+
+		if len(doUpdates) > 0 {
+			_, _ = db.Statement.WriteString(" WHEN MATCHED THEN UPDATE SET ")
+			doUpdates.Build(db.Statement)
+		}
 	}
 
 	_, _ = db.Statement.WriteString(" WHEN NOT MATCHED THEN INSERT (")
